@@ -34,7 +34,7 @@ func (a Account) ToNewAccountResponseDto() *dto.NewAccountResponse {
 }
 
 func (t Transaction) ToNewTransactionResponseToDto() *dto.NewTransactionResponse {
-	return &dto.NewTransactionResponse{t.TransactionId}
+	return &dto.NewTransactionResponse{t.TransactionId, ""}
 }
 
 func NewAccount(customerId, accountType string, amount float64) Account {
