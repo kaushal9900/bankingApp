@@ -4,11 +4,14 @@ import (
 	"bankingApp/domain"
 	"bankingApp/dto"
 	"bankingApp/errs"
+	"time"
 )
+
+const dbTSLayout = "2006-01-02 15:04:05"
 
 type AccountService interface {
 	NewAccount(request dto.NewAccountRequest) (*dto.NewAccountResponse, *errs.AppError)
-	NewTransaction(request dto.NewTransactionRequest) (*dto.NewTransactionResponse, *errs.AppError)
+	MakeTransaction(request dto.TransactionRequest) (*dto.TransactionResponse, *errs.AppError)
 }
 
 type DefaultAccountService struct {
@@ -27,16 +30,35 @@ func (s DefaultAccountService) NewAccount(req dto.NewAccountRequest) (*dto.NewAc
 	}
 }
 
-func (s DefaultAccountService) NewTransaction(req dto.NewTransactionRequest) (*dto.NewTransactionResponse, *errs.AppError) {
-	if err := req.Validate(); err != nil {
+func (s DefaultAccountService) MakeTransaction(req dto.TransactionRequest) (*dto.TransactionResponse, *errs.AppError) {
+	// incoming request validation
+	err := req.Validate()
+	if err != nil {
 		return nil, err
 	}
-	transaction := domain.NewTransaction(req.AccountId, req.TransactionType, req.Amount)
-	if newTransaction, err := s.repo.Update(transaction); err != nil {
-		return nil, err
-	} else {
-		return newTransaction.ToNewTransactionResponseToDto(), nil
+	// server side validation for checking the available balance in the account
+	if req.IsTransactionTypeWithdraw() {
+		account, err := s.repo.FindBy(req.AccountId)
+		if err != nil {
+			return nil, err
+		}
+		if !account.CanWithdraw(req.Amount) {
+			return nil, errs.NewValidationError("Insufficient balance in the account")
+		}
 	}
+	// if all is well, build the domain object & save the transaction
+	t := domain.Transaction{
+		AccountId:       req.AccountId,
+		Amount:          req.Amount,
+		TransactionType: req.TransactionType,
+		TransactionDate: time.Now().Format(dbTSLayout),
+	}
+	transaction, appError := s.repo.SaveTransaction(t)
+	if appError != nil {
+		return nil, appError
+	}
+	response := transaction.ToDto()
+	return &response, nil
 }
 
 func NewAccountService(repo domain.AccountRepository) DefaultAccountService {

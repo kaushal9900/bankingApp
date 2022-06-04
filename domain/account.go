@@ -16,25 +16,14 @@ type Account struct {
 	Status      string  `db:"status"`
 }
 
-type Transaction struct {
-	TransactionId   string  `db:"amount float64"`
-	AccountId       string  `db:"account_id"`
-	Amount          float64 `db:"amount"`
-	TransactionType string  `db:"transaction_type"`
-	TransactionDate string  `db:"transaction_date"`
-}
-
 type AccountRepository interface {
 	Save(Account) (*Account, *errs.AppError)
-	Update(Transaction) (*Transaction, *errs.AppError)
+	SaveTransaction(transaction Transaction) (*Transaction, *errs.AppError)
+	FindBy(accountId string) (*Account, *errs.AppError)
 }
 
 func (a Account) ToNewAccountResponseDto() *dto.NewAccountResponse {
 	return &dto.NewAccountResponse{a.AccountId}
-}
-
-func (t Transaction) ToNewTransactionResponseToDto() *dto.NewTransactionResponse {
-	return &dto.NewTransactionResponse{t.TransactionId, ""}
 }
 
 func NewAccount(customerId, accountType string, amount float64) Account {
@@ -47,10 +36,6 @@ func NewAccount(customerId, accountType string, amount float64) Account {
 	}
 }
 
-func NewTransaction(accountId, transactionType string, amount float64) Transaction {
-	return Transaction{
-		TransactionType: transactionType,
-		Amount:          amount,
-		AccountId:       accountId,
-	}
+func (a Account) CanWithdraw(amount float64) bool {
+	return a.Amount < amount
 }

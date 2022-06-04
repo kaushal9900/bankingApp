@@ -32,16 +32,23 @@ func (h AccountHandler) NewAccount(w http.ResponseWriter, r *http.Request) {
 	writeResponse(w, http.StatusCreated, account)
 }
 
-func (h AccountHandler) NewTransaction(w http.ResponseWriter, r *http.Request) {
-	var request dto.NewTransactionRequest
+func (h AccountHandler) MakeTransaction(w http.ResponseWriter, r *http.Request) {
+
+	vars := mux.Vars(r)
+	accountId := vars["account_id"]
+	customerId := vars["customer_id"]
+
+	var request dto.TransactionRequest
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
 		writeResponse(w, http.StatusBadRequest, err.Error())
 	}
-	transaction, appError := h.service.NewTransaction(request)
+	request.AccountId = accountId
+	request.CustomerId = customerId
+	transaction, appError := h.service.MakeTransaction(request)
 	if appError != nil {
 		writeResponse(w, appError.Code, appError.Message)
 	}
-	writeResponse(w, http.StatusAccepted, transaction)
+	writeResponse(w, http.StatusOK, transaction)
 
 }
