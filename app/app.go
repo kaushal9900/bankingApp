@@ -2,6 +2,7 @@ package app
 
 import (
 	"bankingApp/domain"
+	"bankingApp/domain/logger"
 	"bankingApp/service"
 	"fmt"
 	"log"
@@ -34,13 +35,30 @@ func Start() {
 	ch := CustomerHandler{service: service.NewCustomerService(customerRepositoryDb)}
 	ah := AccountHandler{service: service.NewAccountService(accountRepositoryDb)}
 
-	router.HandleFunc("/customers", ch.getAllCustomers).Methods(http.MethodGet)
-	router.HandleFunc("/customers/{customer_id:[0-9]+}", ch.getCustomer).Methods(http.MethodGet)
-	router.HandleFunc("/customer/{customer_id:[0-9]+}/account", ah.NewAccount).Methods(http.MethodPost)
-	router.HandleFunc("/customer/{customer_id:[0-9]+}/account/{account_id:[0-9]+}", ah.MakeTransaction).Methods(http.MethodPost)
+	router.
+		HandleFunc("/customers", ch.getAllCustomers).
+		Methods(http.MethodGet).Name("GetAllCustomers")
+
+	router.
+		HandleFunc("/customers/{customer_id:[0-9]+}", ch.getCustomer).
+		Methods(http.MethodGet).
+		Name("GetCustomer")
+	router.
+		HandleFunc("/customer/{customer_id:[0-9]+}/account", ah.NewAccount).
+		Methods(http.MethodPost).
+		Name("NewAccount")
+	router.
+		HandleFunc("/customer/{customer_id:[0-9]+}/account/{account_id:[0-9]+}", ah.MakeTransaction).
+		Methods(http.MethodPost).
+		Name("NewTransaction")
+
+	//auth middleware
+	am := AuthMiddleware{domain.NewAuthRepository()}
+	router.Use(am.authorizedHandler())
+
 	serverAddress := os.Getenv("SERVER_ADDRESS")
 	serverPort := os.Getenv("SERVER_PORT")
-
+	logger.Info("Starting Banking Application")
 	log.Fatal(http.ListenAndServe(fmt.Sprintf("%s:%s", serverAddress, serverPort), router))
 }
 
